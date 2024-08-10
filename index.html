@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</head>
+<body>
+    <header class="header">
+        <a href="#" class="logo">LOGO</a>
+        <nav class="navbar">
+            <a href="#">Work</a>
+            <a href="#">About</a>
+            <a href="#">Services</a>
+            <a href="#">Ideas</a>
+            <a href="#">Careers</a>
+            <a href="#">Contact</a>
+        </nav>
+    </header>
+
+    <div class="banner">
+        <h2>Ideas</h2>
+        <p>Where all our great thing begin</p>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <span id="article-count">Showing 0 articles</span>
+            </div>
+            <div class="col-md-4 text-center">
+                <h6>Show per page:
+                    <select id="items-per-page" class="form-select w-auto d-inline">
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                        <option value="50">50 per page</option>
+                    </select>
+                </h6>
+            </div>
+            <div class="col-md-4 text-end">
+                <h6>Sort By: 
+                    <select id="sort-options" class="form-select w-auto d-inline">
+                        <option value="terbaru">Newest</option>
+                        <option value="terlama">Lastest</option>
+                    </select>
+                </h6>
+            </div>
+        </div>
+
+        <div id="articles" class="row">
+            <!-- Articles will be inserted here by JavaScript -->
+        </div>
+
+        <div class="paginasi text-center mt-4">
+            <button id="prev-page" class="btn btn-outline-secondary me-2">Previous</button>
+            <span id="page-info">Page 1</span>
+            <button id="next-page" class="btn btn-outline-secondary ms-2">Next</button>
+        </div>
+    </div>
+
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+
+<script>
+    const state = {
+        sortBy: 'desc', // Default to descending order
+        itemsPerPage: 10,
+        currentPage: 1
+    };
+
+    function saveStateToLocalStorage() {
+        localStorage.setItem('articleState', JSON.stringify(state));
+    }
+
+    function loadStateFromLocalStorage() {
+        const savedState = localStorage.getItem('articleState');
+        if (savedState) {
+            Object.assign(state, JSON.parse(savedState));
+        }
+    }
+
+    async function fetchArticles() {
+    const sortParam = state.sortBy === 'desc' ? '-published_at' : 'published_at';
+    const url = `https://suitmedia-backend.suitdev.com/api/ideas?page[number]=${state.currentPage}&page[size]=${state.itemsPerPage}&append[]=small_image&append[]=medium_image&sort=${sortParam}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'GET', // Ensure the request method is GET
+            headers: {
+                'Accept': 'application/json', // Request to accept JSON responses
+                'Content-Type': 'application/json' // If you need to send JSON (not required for GET)
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching articles:', error);
+        // Handle the error appropriately in your UI
+        document.getElementById('articles').innerHTML = '<p>Error loading articles. Please try again later.</p>';
+    }
+}
+
+
+    async function renderArticles() {
+        const articlesContainer = document.getElementById('articles');
+        articlesContainer.innerHTML = '';
+
+        const data = await fetchArticles();
+        const articles = data.data; // Adjust according to the actual structure of your API response
+
+        articles.forEach(article => {
+            const articleElement = document.createElement('div');
+            articleElement.className = 'col-md-4';
+            articleElement.innerHTML = `
+                <div class="card mb-4">
+                    <img src="${article.small_image}" class="card-img-top" alt="${article.title}">
+                    <div class="card-body">
+                        <h5 class="card-title">${article.title}</h5>
+                        <p class="card-text">Published at: ${article.published_at}</p>
+                    </div>
+                </div>
+            `;
+            articlesContainer.appendChild(articleElement);
+        });
+
+        document.getElementById('article-count').textContent = `Showing ${articles.length} articles`;
+        document.getElementById('page-info').textContent = `Page ${state.currentPage}`;
+    }
+
+    function updatePagination() {
+        // Assuming API response contains the total number of pages
+        const totalPages = 10; // Update this with the actual total pages from API response
+        document.getElementById('prev-page').disabled = state.currentPage === 1;
+        document.getElementById('next-page').disabled = state.currentPage === totalPages;
+    }
+
+    document.getElementById('sort-options').addEventListener('change', function() {
+        state.sortBy = this.value === 'terbaru' ? 'desc' : 'asc';
+        state.currentPage = 1; // Reset to first page on sort
+        saveStateToLocalStorage();
+        renderArticles();
+        updatePagination();
+    });
+
+    document.getElementById('items-per-page').addEventListener('change', function() {
+        state.itemsPerPage = parseInt(this.value, 10);
+        state.currentPage = 1; // Reset to first page on items per page change
+        saveStateToLocalStorage();
+        renderArticles();
+        updatePagination();
+    });
+
+    document.getElementById('prev-page').addEventListener('click', function() {
+        if (state.currentPage > 1) {
+            state.currentPage--;
+            saveStateToLocalStorage();
+            renderArticles();
+            updatePagination();
+        }
+    });
+
+    document.getElementById('next-page').addEventListener('click', function() {
+        const totalPages = 10; // Update this with the actual total pages from API response
+        if (state.currentPage < totalPages) {
+            state.currentPage++;
+            saveStateToLocalStorage();
+            renderArticles();
+            updatePagination();
+        }
+    });
+
+    // Load state and render on page load
+    loadStateFromLocalStorage();
+    document.getElementById('sort-options').value = state.sortBy === 'desc' ? 'terbaru' : 'terlama';
+    document.getElementById('items-per-page').value = state.itemsPerPage;
+    renderArticles();
+    updatePagination();
+</script>
+
+
+</html>
